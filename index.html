@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#eaf4ff">
+<title>Moje slovíčka – prototyp</title>
+<style>
+:root { --blue:#dcecff; --ink:#18324b; --white:#fff; --line:#9ebbd9; }
+* { box-sizing:border-box; }
+body { margin:0; font-family:system-ui,-apple-system,"Segoe UI",sans-serif; color:var(--ink); background:#f5f9ff; }
+header { padding:16px 14px 12px; text-align:center; background:var(--blue); }
+h1 { margin:0; font-size:1.45rem; }
+.subtitle { margin:5px 0 0; font-size:.95rem; }
+main { max-width:900px; margin:auto; padding:12px; }
+.toolbar { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin:8px 0 14px; }
+button, select, input, textarea { font:inherit; }
+button { cursor:pointer; }
+.chip, .action { border:2px solid var(--line); background:white; color:var(--ink); border-radius:14px; padding:10px 13px; font-weight:650; }
+.chip[aria-pressed="true"] { background:#dcecff; border-color:#477fb6; }
+.grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px; }
+.card { min-height:150px; border:3px solid #c0d7ed; border-radius:20px; background:white; padding:12px 8px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:7px; box-shadow:0 2px 7px #18324b12; }
+.card:active { transform:scale(.98); background:#edf6ff; }
+.card img { width:78px; height:78px; object-fit:contain; border-radius:12px; }
+.emoji { font-size:66px; line-height:1.1; }
+.label { font-size:1.2rem; font-weight:750; text-align:center; }
+.small { font-size:.86rem; font-weight:500; }
+.panel { margin-top:16px; padding:14px; border:2px solid #c0d7ed; border-radius:18px; background:#fff; }
+.panel h2 { margin:0 0 8px; font-size:1.12rem; }
+.row { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+#sentence { min-height:48px; padding:10px; background:#f4f8fd; border-radius:12px; margin:8px 0; font-size:1.05rem; }
+.field { display:block; margin:9px 0; width:100%; }
+.field input, .field select { width:100%; padding:10px; border:1px solid #9ebbd9; border-radius:10px; background:white; }
+.notice { font-size:.9rem; line-height:1.45; color:#34516c; }
+.hidden { display:none !important; }
+footer { text-align:center; font-size:.82rem; padding:16px; color:#526a80; }
+@media (min-width:650px) { .grid { grid-template-columns:repeat(3,minmax(0,1fr)); } .card { min-height:175px; } .card img { width:90px;height:90px; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>💙 Moje slovíčka</h1>
+  <p class="subtitle">Jednoduché kartičky s hlasem maminky</p>
+</header>
+<main>
+  <div class="toolbar" id="profiles">
+    <button class="chip" data-profile="1" aria-pressed="true">Profil 1</button>
+    <button class="chip" data-profile="2" aria-pressed="false">Profil 2</button>
+    <button class="chip" id="editToggle">⚙️ Rodičovské nastavení</button>
+  </div>
+  <div class="toolbar" id="categories"></div>
+  <section class="grid" id="cards" aria-label="Komunikační kartičky"></section>
+
+  <section class="panel">
+    <h2>🗣️ Moje sdělení</h2>
+    <p class="notice">Klepáním na kartičky můžeš skládat jednoduché sdělení. Každá kartička se zároveň přehraje vlastním hlasem.</p>
+    <div id="sentence" aria-live="polite">Zatím není vybraná žádná kartička.</div>
+    <div class="row">
+      <button class="action" id="speakSentence">🔊 Přehrát sdělení</button>
+      <button class="action" id="undo">↩️ Zpět</button>
+      <button class="action" id="clearSentence">Vymazat</button>
+    </div>
+  </section>
+
+  <section class="panel hidden" id="parentPanel">
+    <h2>⚙️ Rodičovské nastavení</h2>
+    <p class="notice">Vytvoř vlastní kartičku, nahraj hlas nebo přidej zvukový soubor. Fotografie a nahrávky zůstávají v tomto prohlížeči na tomto zařízení. Prototyp zatím není synchronizován mezi telefonem a tabletem.</p>
+    <form id="cardForm">
+      <label class="field">Název kartičky
+        <input id="cardName" required maxlength="35" placeholder="Např. Moje auto">
+      </label>
+      <label class="field">Kategorie
+        <select id="cardCategory">
+          <option>Oblíbené</option><option>Jídlo a pití</option><option>Potřebuji</option><option>Hra a činnosti</option><option>Rodina</option><option>Pocity</option>
+        </select>
+      </label>
+      <label class="field">Obrázek nebo fotografie
+        <input id="cardImage" type="file" accept="image/*">
+      </label>
+      <div class="row">
+        <button type="button" class="action" id="startRec">🎙️ Nahrát hlas</button>
+        <button type="button" class="action" id="stopRec" disabled>⏹️ Zastavit nahrávání</button>
+        <span id="recStatus" class="notice">Nahrávka není vytvořena.</span>
+      </div>
+      <label class="field">Nebo vyber existující zvukovou nahrávku
+        <input id="cardAudio" type="file" accept="audio/*">
+      </label>
+      <div class="row" style="margin-top:10px">
+        <button class="action" type="submit">➕ Uložit kartičku</button>
+      </div>
+    </form>
+    <p class="notice">Tip: nahrávej krátká a přirozená slova nebo fráze. Pokud prohlížeč nepovolí mikrofon, zkontroluj jeho oprávnění a otevři prototyp přes HTTPS nebo localhost.</p>
+    <div id="customCards"></div>
+  </section>
+  <footer>Prototyp k vyzkoušení · Není to zdravotnický prostředek ani náhrada odborné podpory AAK.</footer>
+</main>
+<script>
+const defaults = [
+ {name:"Voda",cat:"Jídlo a pití",emoji:"🥤",phrase:"Voda."},
+ {name:"Jídlo",cat:"Jídlo a pití",emoji:"🍎",phrase:"Jídlo."},
+ {name:"Záchod",cat:"Potřebuji",emoji:"🚽",phrase:"Záchod."},
+ {name:"Pomoc",cat:"Potřebuji",emoji:"🆘",phrase:"Pomoc."},
+ {name:"Přestávka",cat:"Potřebuji",emoji:"✋",phrase:"Přestávka."},
+ {name:"Hrát si",cat:"Hra a činnosti",emoji:"🧸",phrase:"Hrát si."},
+ {name:"Ven",cat:"Hra a činnosti",emoji:"🌳",phrase:"Ven."},
+ {name:"Maminka",cat:"Rodina",emoji:"❤️",phrase:"Maminka."},
+ {name:"Ano",cat:"Oblíbené",emoji:"👍",phrase:"Ano."},
+ {name:"Ne",cat:"Oblíbené",emoji:"👎",phrase:"Ne."},
+ {name:"Ještě",cat:"Oblíbené",emoji:"🔁",phrase:"Ještě."},
+ {name:"Hotovo",cat:"Oblíbené",emoji:"✅",phrase:"Hotovo."},
+ {name:"Bolí mě",cat:"Pocity",emoji:"🩹",phrase:"Bolí mě."},
+ {name:"Nelíbí se mi to",cat:"Pocity",emoji:"🙅",phrase:"Nelíbí se mi to."}
+];
+let profile = "1", category = "Vše", selected = [], custom = [], recordings = {}, recordingBlob = null, recorder = null, stream = null;
+const $ = id => document.getElementById(id);
+function load() {
+ try { custom = JSON.parse(localStorage.getItem("ms_custom_"+profile)||"[]"); } catch { custom=[]; }
+ try { recordings = JSON.parse(localStorage.getItem("ms_audio_"+profile)||"{}"); } catch { recordings={}; }
+}
+function save() { localStorage.setItem("ms_custom_"+profile, JSON.stringify(custom)); localStorage.setItem("ms_audio_"+profile, JSON.stringify(recordings)); }
+function allCards() { return [...defaults, ...custom]; }
+function categories() {
+ const cats=["Vše", ...new Set(allCards().map(c=>c.cat))];
+ $("categories").innerHTML="";
+ cats.forEach(c=>{const b=document.createElement("button");b.className="chip";b.textContent=c;b.setAttribute("aria-pressed",String(category===c));b.onclick=()=>{category=c;categories();renderCards()};$("categories").appendChild(b)});
+}
+function renderCards() {
+ const grid=$("cards");grid.innerHTML="";
+ allCards().filter(c=>category==="Vše"||c.cat===category).forEach((c,i)=>{
+  const b=document.createElement("button");b.className="card";b.setAttribute("aria-label",c.name);
+  if(c.image){const im=document.createElement("img");im.src=c.image;im.alt="";b.appendChild(im)}
+  else {const em=document.createElement("div");em.className="emoji";em.textContent=c.emoji||"🖼️";b.appendChild(em)}
+  const label=document.createElement("div");label.className="label";label.textContent=c.name;b.appendChild(label);
+  b.onclick=()=>{selected.push(c.name);updateSentence();playCard(c)};
+  grid.appendChild(b);
+ });
+}
+function updateSentence(){ $("sentence").textContent=selected.length?selected.join("  +  "):"Zatím není vybraná žádná kartička."; }
+function playBlobUrl(url){ if(!url)return; const a=new Audio(url); a.play().catch(()=>{}); }
+function playCard(c){
+ const key=c.id||c.name;
+ if(recordings[key]) {playBlobUrl(recordings[key]);return;}
+ const phrase=c.phrase||c.name;
+ if("speechSynthesis" in window){window.speechSynthesis.cancel();window.speechSynthesis.speak(new SpeechSynthesisUtterance(phrase));}
+}
+$("speakSentence").onclick=()=>{
+ if(!selected.length)return;
+ const text=selected.join(", ")+".";
+ if("speechSynthesis" in window){window.speechSynthesis.cancel();window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));}
+};
+$("undo").onclick=()=>{selected.pop();updateSentence()};
+$("clearSentence").onclick=()=>{selected=[];updateSentence()};
+document.querySelectorAll("[data-profile]").forEach(b=>b.onclick=()=>{
+ profile=b.dataset.profile;document.querySelectorAll("[data-profile]").forEach(x=>x.setAttribute("aria-pressed",String(x.dataset.profile===profile)));
+ selected=[];category="Vše";load();categories();renderCards();updateSentence();renderCustomList();
+});
+$("editToggle").onclick=()=>{$("parentPanel").classList.toggle("hidden")};
+function renderCustomList(){
+ const div=$("customCards");div.innerHTML="";
+ if(!custom.length)return;
+ const h=document.createElement("h3");h.textContent="Vlastní kartičky";div.appendChild(h);
+ custom.forEach((c,i)=>{const row=document.createElement("div");row.className="row";row.style.margin="6px 0";const span=document.createElement("span");span.textContent=c.name+" ("+c.cat+")";const del=document.createElement("button");del.className="action";del.textContent="Smazat";del.onclick=()=>{custom.splice(i,1);delete recordings[c.id];save();categories();renderCards();renderCustomList()};row.append(span,del);div.appendChild(row)});
+}
+$("startRec").onclick=async()=>{
+ try {
+  stream=await navigator.mediaDevices.getUserMedia({audio:true});
+  recorder=new MediaRecorder(stream);let chunks=[];
+  recorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
+  recorder.onstop=()=>{recordingBlob=new Blob(chunks,{type:recorder.mimeType||"audio/webm"});$("recStatus").textContent="Nahrávka připravena.";stream.getTracks().forEach(t=>t.stop());stream=null};
+  recorder.start();$("startRec").disabled=true;$("stopRec").disabled=false;$("recStatus").textContent="Nahrávám…";
+ } catch(e) {$("recStatus").textContent="Mikrofon není dostupný. Povol přístup nebo vyber zvukový soubor.";}
+};
+$("stopRec").onclick=()=>{if(recorder&&recorder.state!=="inactive")recorder.stop();$("startRec").disabled=false;$("stopRec").disabled=true};
+$("cardForm").onsubmit=async e=>{
+ e.preventDefault();
+ const name=$("cardName").value.trim();if(!name)return;
+ const id="c_"+Date.now()+"_"+Math.random().toString(36).slice(2,7);
+ let image=null;
+ const f=$("cardImage").files[0];
+ if(f) image=await new Promise(resolve=>{const r=new FileReader();r.onload=()=>resolve(r.result);r.readAsDataURL(f)});
+ const af=$("cardAudio").files[0];
+ let audioUrl=null;
+ if(recordingBlob) audioUrl=URL.createObjectURL(recordingBlob);
+ else if(af) audioUrl=URL.createObjectURL(af);
+ const card={id,name,cat:$("cardCategory").value,emoji:image?null:"🖼️",image,phrase:name};
+ custom.push(card);
+ if(audioUrl) recordings[id]=audioUrl;
+ // Keep image data, but object URLs for audio only last for this tab; warn user if reload.
+ save();categories();renderCards();renderCustomList();
+ $("cardForm").reset();recordingBlob=null;$("recStatus").textContent="Nahrávka není vytvořena.";
+ alert("Kartička byla přidána. Poznámka: v tomto prototypu se zvuková nahrávka po obnovení stránky nemusí zachovat; to doplníme v další verzi.");
+};
+load();categories();renderCards();renderCustomList();
+</script>
+</body>
+</html>
